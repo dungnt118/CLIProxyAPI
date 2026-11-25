@@ -5,6 +5,7 @@ cli-proxy-api
 # Configuration
 config.yaml
 .env
+portainer.env
 
 # Generated content
 bin/*

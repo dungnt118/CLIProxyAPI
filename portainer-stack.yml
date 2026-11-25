@@ -1,0 +1,63 @@
+# =============================================================================
+# CLIProxyAPI - PORTAINER STACK DEFINITION (DOCKER COMPOSE)
+# Dung de Copy & Update truc tiep qua Portainer Web UI hoac deploy/portainer-deploy.mjs
+# Khong dat top-level `name:`: Portainer tu gan project theo ten Stack.
+# =============================================================================
+
+services:
+  cli-proxy-api:
+    image: ${DOCKER_IMAGE:-dungnt118/freepbx:cli-proxy-api}
+    container_name: ${CONTAINER_PREFIX:-cli-proxy-api}
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /CLIProxyAPI/data /CLIProxyAPI/logs /CLIProxyAPI/plugins /root/.cli-proxy-api
+        if [ ! -f /CLIProxyAPI/data/config.yaml ]; then
+          cp /CLIProxyAPI/config.example.yaml /CLIProxyAPI/data/config.yaml
+        fi
+        exec ./CLIProxyAPI --config /CLIProxyAPI/data/config.yaml
+    environment:
+      TZ: ${TIMEZONE:-Asia/Ho_Chi_Minh}
+      DEPLOY: ${DEPLOY:-}
+      MANAGEMENT_PASSWORD: ${MANAGEMENT_PASSWORD:-}
+      PGSTORE_DSN: ${PGSTORE_DSN:-}
+      PGSTORE_SCHEMA: ${PGSTORE_SCHEMA:-}
+      PGSTORE_LOCAL_PATH: ${PGSTORE_LOCAL_PATH:-}
+      GITSTORE_GIT_URL: ${GITSTORE_GIT_URL:-}
+      GITSTORE_GIT_USERNAME: ${GITSTORE_GIT_USERNAME:-}
+      GITSTORE_GIT_TOKEN: ${GITSTORE_GIT_TOKEN:-}
+      GITSTORE_LOCAL_PATH: ${GITSTORE_LOCAL_PATH:-}
+      OBJECTSTORE_ENDPOINT: ${OBJECTSTORE_ENDPOINT:-}
+      OBJECTSTORE_BUCKET: ${OBJECTSTORE_BUCKET:-}
+      OBJECTSTORE_ACCESS_KEY: ${OBJECTSTORE_ACCESS_KEY:-}
+      OBJECTSTORE_SECRET_KEY: ${OBJECTSTORE_SECRET_KEY:-}
+      OBJECTSTORE_LOCAL_PATH: ${OBJECTSTORE_LOCAL_PATH:-}
+    ports:
+      - "${CLIPROXY_PORT:-8317}:8317"
+      - "${CLIPROXY_OAUTH_GEMINI_PORT:-8085}:8085"
+      - "${CLIPROXY_OAUTH_CODEX_PORT:-1455}:1455"
+      - "${CLIPROXY_OAUTH_CLAUDE_PORT:-54545}:54545"
+      - "${CLIPROXY_OAUTH_ANTIGRAVITY_PORT:-51121}:51121"
+      - "${CLIPROXY_OAUTH_IFLOW_PORT:-11451}:11451"
+    volumes:
+      - cliproxyapi_data:/CLIProxyAPI/data
+      - cliproxyapi_auths:/root/.cli-proxy-api
+      - cliproxyapi_logs:/CLIProxyAPI/logs
+      - cliproxyapi_plugins:/CLIProxyAPI/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8317 && printf 'GET /healthz HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  cliproxyapi_data:
+    name: ${VOLUME_PREFIX:-cliproxyapi}_data
+  cliproxyapi_auths:
+    name: ${VOLUME_PREFIX:-cliproxyapi}_auths
+  cliproxyapi_logs:
+    name: ${VOLUME_PREFIX:-cliproxyapi}_logs
+  cliproxyapi_plugins:
+    name: ${VOLUME_PREFIX:-cliproxyapi}_plugins
