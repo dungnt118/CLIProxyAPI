@@ -9,6 +9,7 @@ services:
     image: ${DOCKER_IMAGE:-dungnt118/freepbx:cli-proxy-api}
     container_name: ${CONTAINER_PREFIX:-cli-proxy-api}
     restart: unless-stopped
+    network_mode: ${NETWORK_MODE:-bridge}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -16,11 +17,20 @@ services:
         if [ ! -f /CLIProxyAPI/data/config.yaml ]; then
           cp /CLIProxyAPI/config.example.yaml /CLIProxyAPI/data/config.yaml
         fi
+        if grep -q "your-api-key-1" /CLIProxyAPI/data/config.yaml; then
+          sed -i "s/your-api-key-1/$${CLIPROXY_API_KEY:-sk-cpa-prod-change-me}/g" /CLIProxyAPI/data/config.yaml
+          sed -i '/your-api-key-2/d;/your-api-key-3/d' /CLIProxyAPI/data/config.yaml
+        fi
+        if [ "$${MANAGEMENT_ALLOW_REMOTE:-true}" = "true" ]; then
+          sed -i 's/allow-remote: false/allow-remote: true/g' /CLIProxyAPI/data/config.yaml
+        fi
         exec ./CLIProxyAPI --config /CLIProxyAPI/data/config.yaml
     environment:
       TZ: ${TIMEZONE:-Asia/Ho_Chi_Minh}
       DEPLOY: ${DEPLOY:-}
+      CLIPROXY_API_KEY: ${CLIPROXY_API_KEY:-sk-cpa-prod-2026-change-me}
       MANAGEMENT_PASSWORD: ${MANAGEMENT_PASSWORD:-}
+      MANAGEMENT_ALLOW_REMOTE: ${MANAGEMENT_ALLOW_REMOTE:-true}
       PGSTORE_DSN: ${PGSTORE_DSN:-}
       PGSTORE_SCHEMA: ${PGSTORE_SCHEMA:-}
       PGSTORE_LOCAL_PATH: ${PGSTORE_LOCAL_PATH:-}
@@ -46,7 +56,7 @@ services:
       - cliproxyapi_logs:/CLIProxyAPI/logs
       - cliproxyapi_plugins:/CLIProxyAPI/plugins
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8317 && printf 'GET /healthz HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3 && grep -q '200 OK' <&3"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8317 && printf 'GET /healthz HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3 && grep -q '200 OK' <&3"]
       interval: 15s
       timeout: 5s
       retries: 5
